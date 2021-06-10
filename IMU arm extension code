@@ -1,0 +1,64 @@
+#include <time.h>
+#include "ICM_20948.h" //Click here to get the library: http://librarymanager/All#SparkFun_ICM_20948_IMU
+
+const int outv=3; //output voltage pin
+float start;
+bool flag;
+float x_acc; //x axis acceleration of the IMU
+float acc_thresh=80;
+float magnitudex(ICM_20948_I2C *sensor); //calculates x_acc
+
+#define WIRE_PORT Wire //declarations for correct functioning of IMU
+
+#define AD0_VAL 1
+
+ICM_20948_I2C myICM;
+
+void setup() {
+  Serial.begin(9600); //starts the serial
+  pinMode(outv, OUTPUT);
+  WIRE_PORT.begin();
+  WIRE_PORT.setClock(400000); //begins and configures the Wire of IMU
+  bool initialized = false;
+  while (!initialized) //doesn't exit until the IMU is working
+  {
+    myICM.begin(WIRE_PORT, AD0_VAL);
+    if (myICM.status != ICM_20948_Stat_Ok) //checks that IMU is started and works properly
+    {
+      Serial.println("Trying again...");
+      delay(500);
+    }
+    else
+    {
+      initialized = true;
+    }
+  }
+}
+
+ 
+
+void loop() {
+  if (myICM.dataReady()) //checks whether the IMU has data available
+  {
+    myICM.getAGMT(); //gets that data
+    x_acc = magnitude(&myICM); //calculates the magnitude of angular acceleration
+  }
+  if(x_acc>acc_thresh && flag)
+  {
+     digitalWrite(outv,HIGH);
+     start=millis();
+     flag=0;
+  }
+  else digitalWrite(outv,LOW);
+  if(millis()-start>50) //sets 50 ms delay to ensure that 1 movement is not causing multiple triggers
+  {
+    flag=1;
+  }
+}
+
+float magnitude(ICM_20948_I2C *sensor) //gives you the magnitude of the angular acceleration vector
+{
+  float magn;
+  magn = sensor->accX();
+  return magn; //returns that acceleration value;
+}
